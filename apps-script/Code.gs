@@ -3,6 +3,7 @@ const AUDIT_SHEET = "Audit";
 const SETTINGS_SHEET = "Settings";
 const LINKS_SHEET = "Judge Links";
 const POSTERS_SHEET = "Poster Assignments";
+const ASSIGNMENT_VERSION = "2026-04-29-srijit-rebalance";
 
 const RUBRIC = [
   { key: "background", label: "Background Information" },
@@ -141,6 +142,7 @@ function bootstrap_(token) {
 
   return {
     ok: true,
+    assignmentVersion: ASSIGNMENT_VERSION,
     judge: entry.judge,
     posters: entry.posters.map(findPoster_).filter(Boolean),
     submissions: submissions,
@@ -291,6 +293,7 @@ function adminWorkspace_(adminToken) {
 
   return {
     ok: true,
+    assignmentVersion: ASSIGNMENT_VERSION,
     judges: JUDGES.map((entry) => ({
       judge: entry.judge,
       posters: entry.posters.map(findPoster_).filter(Boolean)
@@ -305,7 +308,11 @@ function results_(adminToken) {
     return { ok: false, error: "Invalid admin link." };
   }
 
-  const submissions = readSubmissions_();
+  const allSubmissions = readSubmissions_();
+  const submissions = allSubmissions.filter((submission) => {
+    const poster = findPoster_(submission.posterId);
+    return poster && poster.judges.indexOf(submission.judge) !== -1;
+  });
   const posterResults = POSTERS.map((row) => {
     const poster = posterFromRow_(row);
     const posterSubmissions = submissions.filter((submission) => submission.posterId === poster.id);
@@ -342,10 +349,12 @@ function results_(adminToken) {
 
   return {
     ok: true,
+    assignmentVersion: ASSIGNMENT_VERSION,
     generatedAt: new Date().toISOString(),
     winner: posterResults.filter((poster) => poster.average !== "")[0] || null,
     posters: posterResults,
-    submissions: submissions
+    submissions: submissions,
+    ignoredSubmissionCount: allSubmissions.length - submissions.length
   };
 }
 
@@ -439,9 +448,11 @@ function ensureSecrets_() {
     };
   });
   props.setProperty("JUDGE_TOKENS", JSON.stringify(nextMap));
+  props.setProperty("ASSIGNMENT_VERSION", ASSIGNMENT_VERSION);
 }
 
 function getTokenMap_() {
+  ensureSecrets_();
   const raw = PropertiesService.getScriptProperties().getProperty("JUDGE_TOKENS");
   if (!raw) {
     throw new Error("Run setupBackend in Apps Script before using the judging site.");

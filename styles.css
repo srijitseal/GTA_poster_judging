@@ -672,6 +672,38 @@ button {
   font-weight: 700;
 }
 
+.backend-warning {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(196, 65, 46, 0.28);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: #6f271f;
+  background: #fff4f0;
+}
+
+.backend-warning.is-info {
+  border-color: rgba(20, 108, 115, 0.2);
+  color: var(--teal);
+  background: #edf7f7;
+}
+
+.backend-warning strong {
+  color: inherit;
+}
+
+.backend-warning span,
+.backend-warning li {
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.backend-warning ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .winner-strip {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 130px;

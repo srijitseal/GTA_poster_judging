@@ -548,10 +548,20 @@ function renderResults() {
   const winner = data.winner;
   const summary = summarizeResults(data);
   const judgeRows = buildJudgeCompletion(data);
+  const assignmentIssues = findAssignmentMismatches(data);
+  const ignoredSubmissionCount = Number(data.ignoredSubmissionCount || 0);
   const selected = data.posters.find((poster) => poster.id === state.selectedResultPosterId) || data.posters[0];
   state.selectedResultPosterId = selected.id;
 
   els.resultsContent.innerHTML = `
+    ${assignmentIssues.length ? renderAssignmentWarning(assignmentIssues) : ""}
+    ${ignoredSubmissionCount ? `
+      <section class="backend-warning is-info">
+        <strong>Stale saved ratings ignored</strong>
+        <span>${ignoredSubmissionCount} response${ignoredSubmissionCount === 1 ? "" : "s"} no longer match the current judge assignments and are excluded from these results.</span>
+      </section>
+    ` : ""}
+
     <section class="summary-cards" aria-label="Results summary">
       <div class="summary-card">
         <span>${summary.includedSubmissions}</span>
@@ -714,6 +724,44 @@ function summarizeResults(data) {
     completePosters: data.posters.filter((poster) => poster.includedCount >= poster.expectedCount).length,
     missingSubmissions: Math.max(0, expectedRatings - includedSubmissions)
   };
+}
+
+function renderAssignmentWarning(issues) {
+  return `
+    <section class="backend-warning">
+      <strong>Apps Script assignment data is stale</strong>
+      <span>The website is current, but the backend results are returning older judge assignments. Paste the latest <code>apps-script/Code.gs</code> into Apps Script, run <code>setupBackend</code>, then deploy a new web app version.</span>
+      <ul>
+        ${issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function findAssignmentMismatches(data) {
+  const issues = [];
+  const actualByPoster = new Map(data.posters.map((poster) => [poster.id, poster.judges || []]));
+  POSTERS.forEach((poster) => {
+    const actual = actualByPoster.get(poster.id);
+    if (!actual) {
+      issues.push(`${poster.id} is missing from backend results.`);
+      return;
+    }
+
+    const expectedList = sortedList(poster.judges);
+    const actualList = sortedList(actual);
+    if (expectedList !== actualList) {
+      issues.push(`${poster.id}: expected ${expectedList || "-"}, backend returned ${actualList || "-"}.`);
+    }
+  });
+
+  const expectedJudges = sortedList(uniqueFlat(POSTERS.map((poster) => poster.judges)));
+  const actualJudges = sortedList(uniqueFlat(data.posters.map((poster) => poster.judges || [])));
+  if (expectedJudges !== actualJudges) {
+    issues.unshift(`Expected judges ${expectedJudges}; backend returned ${actualJudges}.`);
+  }
+
+  return issues;
 }
 
 function buildJudgeCompletion(data) {
@@ -987,6 +1035,14 @@ function shortCategory(category) {
 
 function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function sortedList(values) {
+  return values.slice().sort((a, b) => a.localeCompare(b)).join(", ");
+}
+
+function uniqueFlat(groups) {
+  return Array.from(new Set(groups.flat()));
 }
 
 function csvCell(value) {
