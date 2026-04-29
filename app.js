@@ -11,6 +11,8 @@ const RUBRIC = [
 ];
 
 const SCORE_MAX = RUBRIC.length * 4;
+const JSONP_MAX_ATTEMPTS = 3;
+const JSONP_TIMEOUT_MS = 20000;
 
 const POSTERS = [
   {
@@ -894,7 +896,22 @@ const apiAdminWorkspace = (adminToken) => {
   return jsonpRequest({ action: "adminWorkspace", admin: adminToken });
 };
 
-function jsonpRequest(query) {
+async function jsonpRequest(query) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= JSONP_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await jsonpRequestOnce(query, attempt);
+    } catch (error) {
+      lastError = error;
+      if (attempt < JSONP_MAX_ATTEMPTS) {
+        await sleep(500 * attempt);
+      }
+    }
+  }
+  throw lastError || new Error("Could not contact Apps Script.");
+}
+
+function jsonpRequestOnce(query, attempt) {
   return new Promise((resolve, reject) => {
     if (!config.appsScriptUrl) {
       reject(new Error("Missing Apps Script URL in config.js."));
@@ -903,13 +920,13 @@ function jsonpRequest(query) {
 
     const callback = `gtaCallback_${Date.now()}_${Math.round(Math.random() * 100000)}`;
     const url = new URL(config.appsScriptUrl);
-    Object.entries({ ...query, callback }).forEach(([key, value]) => url.searchParams.set(key, value));
+    Object.entries({ ...query, callback, _ts: `${Date.now()}-${attempt}` }).forEach(([key, value]) => url.searchParams.set(key, value));
 
     const script = document.createElement("script");
     const timeout = window.setTimeout(() => {
       cleanup();
       reject(new Error("Timed out contacting Apps Script."));
-    }, 12000);
+    }, JSONP_TIMEOUT_MS);
 
     window[callback] = (data) => {
       cleanup();
@@ -928,6 +945,7 @@ function jsonpRequest(query) {
     }
 
     script.src = url.toString();
+    script.async = true;
     document.body.appendChild(script);
   });
 }
