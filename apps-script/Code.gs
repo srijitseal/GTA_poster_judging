@@ -19,10 +19,10 @@ const RUBRIC = [
 const POSTERS = [
   ["P28", "Adam Faranda", "Early investigator (<5 years professional experience from terminal degree)", "Validation of a whole-cell in vitro tubulin stability assay in the human-derived Tk6 cell line", "Erica", "James"],
   ["P13", "Alexis Pawlak", "Early investigator (<5 years professional experience from terminal degree)", "Redox-Driven Mechanisms Support NAM Validation for Interpretation of False Positive In Vitro Micronucleus Findings", "Wen", "Erica"],
-  ["P22", "Alicia Predom", "Early investigator (<5 years professional experience from terminal degree)", "Multi-Endpoint Genotoxicity Assessment of ENU and MNNG in Four-Week-Old Wistar Han Rats", "James", "Rajib"],
+  ["P22", "Alicia Predom", "Early investigator (<5 years professional experience from terminal degree)", "Multi-Endpoint Genotoxicity Assessment of ENU and MNNG in Four-Week-Old Wistar Han Rats", "Srijit", "Rajib"],
   ["P01", "Gloria Melzi", "Early investigator (<5 years professional experience from terminal degree)", "Integrated in vitro assessment of genotoxic dose-response relationships", "Wen", "Abby"],
   ["P21", "Nisha R. Sweet", "Early investigator (<5 years professional experience from terminal degree)", "Evaluating pChk2 and gH2AX as Potential Biomarkers for DNA Damage by N-Nitroso Compounds (oNNOs)", "Raechel", "Erica"],
-  ["P10", "Samuel Odebamowo", "Early investigator (<5 years professional experience from terminal degree)", "Applying a Decision-Support Framework for Efficient and Transparent Carcinogenicity Risk Assessment", "Tetyana", "Stefan"],
+  ["P10", "Samuel Odebamowo", "Early investigator (<5 years professional experience from terminal degree)", "Applying a Decision-Support Framework for Efficient and Transparent Carcinogenicity Risk Assessment", "Tetyana", "Srijit"],
   ["P20", "Vivian Tang", "Early investigator (<5 years professional experience from terminal degree)", "Evaluating the mutagenicity of other N-Nitroso (oNNO) compounds using the Ames assay", "James", "Tetyana"],
   ["P11", "Xinwen Zhang", "Early investigator (<5 years professional experience from terminal degree)", "Application of Error-Corrected Sequencing to In Vitro Assessment of Mutagenesis: Proof-of-Concept Experiments with N-Ethyl-Nitrosourea (ENU) and Ethyl Methanesulfonate (EMS) in Human Lymphoblastoid TK6 cells", "Rajib", "Raechel"],
   ["P02", "Caitlin Maggs", "Student", "Investigating DNA damage in multiple cell culture models for the development of quantitative Adverse Outcome Pathways (qAOPs) for genotoxicity", "Stefan", "Abby"],
@@ -34,12 +34,13 @@ const POSTERS = [
 const JUDGES = [
   { judge: "Abby", posters: ["P01", "P02", "P15"] },
   { judge: "Erica", posters: ["P28", "P13", "P21"] },
-  { judge: "James", posters: ["P28", "P22", "P20"] },
+  { judge: "James", posters: ["P20", "P28"] },
   { judge: "Raechel", posters: ["P21", "P07", "P11"] },
   { judge: "Rajib", posters: ["P11", "P15", "P22"] },
-  { judge: "Stefan", posters: ["P02", "P10", "P26"] },
+  { judge: "Stefan", posters: ["P02", "P26"] },
   { judge: "Tetyana", posters: ["P10", "P20", "P07"] },
-  { judge: "Wen", posters: ["P13", "P26", "P01"] }
+  { judge: "Wen", posters: ["P13", "P26", "P01"] },
+  { judge: "Srijit", posters: ["P10", "P22"] }
 ];
 
 const RESPONSE_HEADERS = [
@@ -386,6 +387,7 @@ function writePosterAssignments_() {
 
 function writeJudgeLinks() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureSecrets_();
   const tokenMap = getTokenMap_();
   const sheet = ss.getSheetByName(LINKS_SHEET) || ss.insertSheet(LINKS_SHEET);
   const rows = Object.keys(tokenMap)
@@ -420,16 +422,23 @@ function ensureSecrets_() {
   if (!props.getProperty("ADMIN_TOKEN")) {
     props.setProperty("ADMIN_TOKEN", makeToken_());
   }
-  if (!props.getProperty("JUDGE_TOKENS")) {
-    const tokenMap = {};
-    JUDGES.forEach((entry) => {
-      tokenMap[makeToken_()] = {
-        judge: entry.judge,
-        posters: entry.posters
-      };
-    });
-    props.setProperty("JUDGE_TOKENS", JSON.stringify(tokenMap));
-  }
+
+  const existingRaw = props.getProperty("JUDGE_TOKENS");
+  const existingMap = existingRaw ? JSON.parse(existingRaw) : {};
+  const tokenByJudge = {};
+  Object.keys(existingMap).forEach((token) => {
+    tokenByJudge[existingMap[token].judge] = token;
+  });
+
+  const nextMap = {};
+  JUDGES.forEach((entry) => {
+    const token = tokenByJudge[entry.judge] || makeToken_();
+    nextMap[token] = {
+      judge: entry.judge,
+      posters: entry.posters
+    };
+  });
+  props.setProperty("JUDGE_TOKENS", JSON.stringify(nextMap));
 }
 
 function getTokenMap_() {

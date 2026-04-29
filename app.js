@@ -32,7 +32,7 @@ const POSTERS = [
     presenter: "Alicia Predom",
     category: "Early investigator (<5 years professional experience from terminal degree)",
     title: "Multi-Endpoint Genotoxicity Assessment of ENU and MNNG in Four-Week-Old Wistar Han Rats",
-    judges: ["James", "Rajib"]
+    judges: ["Srijit", "Rajib"]
   },
   {
     id: "P01",
@@ -53,7 +53,7 @@ const POSTERS = [
     presenter: "Samuel Odebamowo",
     category: "Early investigator (<5 years professional experience from terminal degree)",
     title: "Applying a Decision-Support Framework for Efficient and Transparent Carcinogenicity Risk Assessment",
-    judges: ["Tetyana", "Stefan"]
+    judges: ["Tetyana", "Srijit"]
   },
   {
     id: "P20",
